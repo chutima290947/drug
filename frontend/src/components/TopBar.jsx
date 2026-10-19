@@ -2,7 +2,7 @@ import { CLINICS } from '../data.js'
 import { thDate } from '../utils.js'
 import { field, btnGhost, btnPrimary } from '../classes.js'
 
-export default function TopBar({ clinic, setClinic, q, setQ, onSettings, onAdd }) {
+export default function TopBar({ clinic, setClinic, q, setQ, onSettings, onAdd, user }) {
   return (
     <header className="sticky top-0 z-[5] bg-white border-b border-line px-6 py-3 flex flex-wrap gap-3 items-center justify-between max-[1000px]:static print:hidden">
       <div className="relative flex items-center gap-3.5 overflow-hidden rounded-2xl py-2.5 pl-3 pr-6 text-white ring-1 ring-white/10 shadow-[0_8px_20px_-8px_rgba(5,13,43,.6)] bg-[linear-gradient(135deg,#050d2b_0%,#0a1a4a_55%,#17398f_100%)]">
@@ -23,8 +23,8 @@ export default function TopBar({ clinic, setClinic, q, setQ, onSettings, onAdd }
         <button className={btnGhost} onClick={onSettings}>⚙ ตั้งค่าเกณฑ์</button>
         <button className={btnPrimary} onClick={onAdd}>+ เพิ่มรายการเวชภัณฑ์</button>
         <div className="flex items-center gap-2.5 ml-2 pl-4 border-l border-line text-right text-[13px] leading-[1.3]">
-          <span>ภก. ประจำห้องยา<br /><small>OutList Pharmacist</small></span>
-          <i className="w-[38px] h-[38px] rounded-full bg-accent text-white grid place-items-center not-italic font-semibold">ภ</i>
+          <span>{user.name}<br /><small>{user.role === 'admin' ? 'ผู้ดูแลระบบ' : 'ผู้ใช้งาน'}</small></span>
+          <i className="w-[38px] h-[38px] rounded-full bg-accent text-white grid place-items-center not-italic font-semibold">{[...user.name][0]}</i>
         </div>
       </div>
     </header>

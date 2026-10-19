@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { fmt, thDate, dayTxt, cov, EXP_LABEL } from '../utils.js'
 import { Flags, Chips, Th, Td } from '../components/ui.jsx'
 import { USAGE } from '../data.js'
-import { card, ROW, noteInput, pillCls } from '../classes.js'
+import { card, ROW, noteCls, pillCls } from '../classes.js'
 
 export default function UsagePage({ d }) {
   const { rows, clinic, uf, setUf, notes, setNotes, setSel } = d
@@ -14,7 +14,7 @@ export default function UsagePage({ d }) {
   // คอลัมน์ในตารางตามช่วงเวลาที่เลือกด้านบน (30/90/180 วัน)
   const u = (r) => { const used = USAGE[r.key][`out${top}`], avg = used / top; return { used, avg, cv: avg > 0 ? r.stock / avg : Infinity } }
   const useAll = [...rows].sort((a, b) => a.stock - b.stock)
-  const ufn = { all: () => true, exp: (r) => r.worst !== 'ok', nm: (r) => r.noMove, os: (r) => r.overstock && !r.noMove }
+  const ufn = { all: () => true, exp: (r) => r.worst !== 'ok', nm: (r) => r.noMove, os: (r) => r.overstock && !r.noMove, note: (r) => !!(notes[r.key] || '').trim() }
   const useRows = useAll.filter(ufn[uf])
   const uc = (k) => useAll.filter(ufn[k]).length
   const segBtn = 'border-0 px-3 py-[3px] rounded-lg text-[12.5px] cursor-pointer'
@@ -44,7 +44,7 @@ export default function UsagePage({ d }) {
           {top5.length === 0 && <p className="text-mut">ไม่พบข้อมูล</p>}
         </div>
       </div>
-      <Chips v={uf} set={setUf} items={[['all', `ทั้งหมด (${useAll.length})`], ['exp', `เตือนหมดอายุ (${uc('exp')})`], ['nm', `ไม่เคลื่อนไหว (${uc('nm')})`], ['os', `Overstock (${uc('os')})`]]} />
+      <Chips v={uf} set={setUf} items={[['all', `ทั้งหมด (${useAll.length})`], ['exp', `เตือนหมดอายุ (${uc('exp')})`], ['nm', `ไม่เคลื่อนไหว (${uc('nm')})`], ['os', `Overstock (${uc('os')})`], ['note', `📝 มีหมายเหตุ (${uc('note')})`]]} />
       <div className={`${card} overflow-auto`}>
         <table className="w-full border-separate border-spacing-0">
           <thead><tr><Th>ยา / รหัสยา</Th>{clinic === 'all' && <Th>คลินิก</Th>}<Th n>คงเหลือ</Th><Th n>เฉลี่ยอัตราการใช้ {top} วัน</Th><Th n>เฉลี่ย/วัน</Th><Th n>ใช้ได้อีก</Th><Th>Exp ใกล้สุด</Th><Th>สถานะการใช้</Th><Th>หมายเหตุ</Th></tr></thead>
@@ -56,7 +56,7 @@ export default function UsagePage({ d }) {
                 <Td n>{u(r).avg ? fmt(u(r).avg, 2) : '—'}</Td><Td n>{r.tracked === false ? <span className="text-mut">ไม่ติดตาม</span> : u(r).cv === Infinity ? <span className="text-mut">ไม่มีการใช้</span> : cov(u(r).cv)}</Td>
                 <Td className="font-bold text-[15.5px]"><div>{thDate(r.nearest.exp)}{r.worst === 'expired' && <span className={pillCls('expired', { small: true })}>{EXP_LABEL.expired}</span>}</div><div className="text-xs text-mut leading-[1.3] font-normal">{r.nearest.lot} · เหลือ {dayTxt(r.nearest.exp)}</div></Td>
                 <Td>{r.noMove || r.overstock || r.low ? <Flags r={r} /> : <span className="text-mut">ปกติ</span>}</Td>
-                <Td onClick={(e) => e.stopPropagation()}><input className={noteInput} placeholder="+ หมายเหตุ" value={notes[r.key] || ''} onChange={(e) => setNotes({ ...notes, [r.key]: e.target.value })} /></Td>
+                <Td onClick={(e) => e.stopPropagation()}><input className={noteCls(notes[r.key])} placeholder="+ หมายเหตุ" value={notes[r.key] || ''} onChange={(e) => setNotes({ ...notes, [r.key]: e.target.value })} /></Td>
               </tr>
             ))}
           </tbody>

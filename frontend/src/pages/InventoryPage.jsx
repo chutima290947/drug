@@ -1,9 +1,10 @@
 import { fmt, baht, thDate, dayTxt } from '../utils.js'
 import { Pill, Flags, Chips, SC, Th, Td } from '../components/ui.jsx'
-import { card, ROW, noteInput, btnGhost, btnPrimary } from '../classes.js'
+import { card, ROW, noteCls, btnGhost, btnPrimary } from '../classes.js'
 
 export default function InventoryPage({ d }) {
   const { cfg, lotRows, invRows, cnt, qty, val, fs, setFs, rowMap, notes, setNotes, setSel, del, picked, pickToggle, pickMany, clearPick, exportCsv, printReport } = d
+  const noteCount = lotRows.filter((l) => (notes[`${l.clinic}|${l.lot}`] || '').trim()).length // Lot ที่มีหมายเหตุ
   const allPicked = invRows.length > 0 && invRows.every((l) => picked.has(l.id))
   return (
     <>
@@ -13,7 +14,7 @@ export default function InventoryPage({ d }) {
         <SC c="or" t={`เฝ้าระวัง (≤ ${cfg.orangeMonths} เดือน)`} n={cnt('orange')} u={`Lot (${fmt(qty('orange'))} หน่วย)`} sub={`รวมมูลค่า ${baht(val('orange'))}`} onClick={() => setFs(fs === 'orange' ? 'all' : 'orange')} />
         <SC c="teal2" t="ปกติ (ระยะปลอดภัย)" n={cnt('ok')} u={`Lots (${fmt(qty('ok'))} หน่วย)`} sub={`รวมมูลค่า ${baht(val('ok'))}`} onClick={() => setFs(fs === 'ok' ? 'all' : 'ok')} />
       </div>
-      <Chips v={fs} set={setFs} items={[['all', `ทั้งหมด (${lotRows.length})`], ['expired', `หมดอายุห้ามใช้ (${cnt('expired')})`], ['red', `ใกล้หมดอายุ (${cnt('red')})`], ['orange', `เฝ้าระวัง (${cnt('orange')})`], ['soon', `ใกล้หมดอายุ ≤ ${cfg.orangeMonths} เดือน (${cnt('red') + cnt('orange')})`], ['ok', `ปกติ (${cnt('ok')})`]]} />
+      <Chips v={fs} set={setFs} items={[['all', `ทั้งหมด (${lotRows.length})`], ['expired', `หมดอายุห้ามใช้ (${cnt('expired')})`], ['red', `ใกล้หมดอายุ (${cnt('red')})`], ['orange', `เฝ้าระวัง (${cnt('orange')})`], ['soon', `ใกล้หมดอายุ ≤ ${cfg.orangeMonths} เดือน (${cnt('red') + cnt('orange')})`], ['ok', `ปกติ (${cnt('ok')})`], ['note', `📝 มีหมายเหตุ (${noteCount})`]]} />
       <div className="flex items-center gap-2.5 flex-wrap mb-3.5 print:hidden">
         <button className={btnPrimary} onClick={printReport}>🖨 พิมพ์รายงาน ({picked.size ? `เลือก ${picked.size}` : `ที่แสดง ${invRows.length}`})</button>
         {picked.size > 0 && <button className={btnGhost} onClick={clearPick}>ล้างการเลือก</button>}
@@ -31,7 +32,7 @@ export default function InventoryPage({ d }) {
                   <Td n>{fmt(l.qty)} {l.drug.unit}</Td><Td n>{baht(l.qty * l.drug.price)}</Td>
                   <Td className="font-bold text-[15.5px]">{thDate(l.exp)}</Td><Td n className="font-bold text-[15.5px]">{dayTxt(l.exp)}</Td><Td><Pill s={l.status} /></Td>
                   <Td>{r.noMove || r.overstock || r.low ? <Flags r={r} /> : <span className="text-mut">ปกติ</span>}</Td>
-                  <Td onClick={(e) => e.stopPropagation()}><input className={noteInput} placeholder="+ หมายเหตุ" value={notes[nk] || ''} onChange={(e) => setNotes({ ...notes, [nk]: e.target.value })} /></Td>
+                  <Td onClick={(e) => e.stopPropagation()}><input className={noteCls(notes[nk])} placeholder="+ หมายเหตุ" value={notes[nk] || ''} onChange={(e) => setNotes({ ...notes, [nk]: e.target.value })} /></Td>
                   <Td onClick={(e) => e.stopPropagation()}><button className="border-0 bg-transparent px-2 py-1 text-inherit opacity-55 hover:opacity-100 cursor-pointer" onClick={() => del(l)} aria-label="ลบ">✕</button></Td>
                 </tr>
               )

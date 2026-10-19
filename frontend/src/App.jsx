@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CLINICS, USAGE } from './data.js'
-import { api } from './api.js'
+import { api, auth } from './api.js'
 import { DEFAULTS, summarize, thDate, EXP_LABEL, short, drugMap } from './utils.js'
 import Sidebar from './components/Sidebar.jsx'
 import TopBar from './components/TopBar.jsx'
@@ -11,13 +11,15 @@ import DashboardPage from './pages/DashboardPage.jsx'
 import InventoryPage from './pages/InventoryPage.jsx'
 import UsagePage from './pages/UsagePage.jsx'
 import AlertsPage from './pages/AlertsPage.jsx'
+import NewsPage from './pages/NewsPage.jsx'
+import LoginPage from './pages/LoginPage.jsx'
 import PrintReport from './components/PrintReport.jsx'
 import { card, btnGhost, btnPrimary } from './classes.js'
 
 const EMPTY_FORM = { type: 'drug', code: '', name: '', unit: '', price: '', clinic: CLINICS[0], qty: '', lot: '', exp: '' }
 
 
-export default function App() {
+function Main({ user, onLogout }) {
   const [tab, setTab] = useState('dash')
   const [clinic, setClinic] = useState('all')
   const [q, setQ] = useState('')
@@ -40,13 +42,16 @@ export default function App() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [fs, setFs] = useState('all')
   const [uf, setUf] = useState('all')
+  const [stockSrc, setStockSrc] = useState('manual') // แหล่งยอดคงเหลือ: manual = กรอกในระบบนี้ | imed = ดึงจาก iMed Stock
+  const [updatedAt, setUpdatedAt] = useState(null)
+  const [newsCount, setNewsCount] = useState(0) // จำนวนข่าวทั้งหมด แสดงเป็นเลขที่เมนูข่าวสาร
 
   const notify = (m) => { setToast(m); setTimeout(() => setToast(''), 3500) }
   const lotsRef = useRef(lots); lotsRef.current = lots
   const noteTimers = useRef({})
 
   // โหลดข้อมูลทั้งหมดจาก backend (Lot, ยอดจ่ายยา, ค่าตั้งเกณฑ์, หมายเหตุ)
-  const loadAll = useCallback(async () => {
+  const loadAll = useCallback(async (silent = false) => {
     try {
       const [rowsL, rowsU, st] = await Promise.all([api.lots(), api.usage(), api.settings()])
       const byCode = Object.fromEntries(CLINICS.map((n) => [short(n), n]))
@@ -64,10 +69,22 @@ export default function App() {
         if (r.note) nn[`${c}|${r.lot_no}`] = r.note
         return { id: r.id, clinic: c, code: r.drug_code, lot: r.lot_no, qty: r.qty, exp: String(r.expiry_date).slice(0, 10) }
       })
-      setCfg({ ...DEFAULTS, ...st }); setLots(L); setNotes(nn); setStatus('ok')
-    } catch (e) { setErrMsg(e.message); setStatus('error') }
+      setCfg({ ...DEFAULTS, ...st }); setLots(L); setNotes(nn); setStatus('ok'); setUpdatedAt(new Date())
+      return true
+    } catch (e) {
+      if (!silent) { setErrMsg(e.message); setStatus('error') } // รีเฟรชเบื้องหลังที่พลาด ไม่ต้องล้มทั้งหน้า
+      return false
+    }
   }, [])
   useEffect(() => { loadAll() }, [loadAll])
+  useEffect(() => { api.authConfig().then((c) => setStockSrc(c.stock || 'manual')).catch(() => {}) }, [])
+  // ยอดคงเหลือจาก iMed เป็น real-time: รีเฟรชอัตโนมัติทุก 1 นาที (เฉพาะเมื่อเปิดหน้านี้อยู่)
+  useEffect(() => {
+    if (stockSrc !== 'imed') return
+    const t = setInterval(() => { if (!document.hidden) loadAll(true) }, 60000)
+    return () => clearInterval(t)
+  }, [stockSrc, loadAll])
+  useEffect(() => { api.news().then((r) => setNewsCount(r.length)).catch(() => {}) }, [])
 
   // ค้นรหัสจากฐานข้อมูลตอนพิมพ์ (ไม่ดึงทั้งหมด) — ยา: ดึงอัตโนมัติ / เวชภัณฑ์: ถ้าเคยกรอกไว้จะเติมให้
   useEffect(() => {
@@ -111,12 +128,12 @@ export default function App() {
   )
   const lotRows = rows.flatMap((r) => r.lots.map((l) => ({ ...l, drug: r.drug, key: r.key })))
     .sort((a, b) => new Date(a.exp) - new Date(b.exp))
-  const invRows = fs === 'all' ? lotRows : fs === 'soon' ? lotRows.filter((l) => l.status === 'red' || l.status === 'orange') : lotRows.filter((l) => l.status === fs)
+  const invRows = fs === 'all' ? lotRows : fs === 'soon' ? lotRows.filter((l) => l.status === 'red' || l.status === 'orange') : fs === 'note' ? lotRows.filter((l) => (notes[`${l.clinic}|${l.lot}`] || '').trim()) : lotRows.filter((l) => l.status === fs)
   const pickToggle = (id) => setPicked((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n })
   const pickMany = (ids, on) => setPicked((p) => { const n = new Set(p); ids.forEach((i) => (on ? n.add(i) : n.delete(i))); return n })
   const clearPick = () => setPicked(new Set())
   const reportRows = picked.size ? lotRows.filter((l) => picked.has(l.id)) : invRows
-  const FS_TITLE = { all: 'ทะเบียนเวชภัณฑ์คงคลัง (ทุกสถานะ)', expired: EXP_LABEL.expired, red: `${EXP_LABEL.red} (≤ ${cfg.redMonths} เดือน)`, orange: `เฝ้าระวัง (≤ ${cfg.orangeMonths} เดือน)`, soon: `รายการใกล้หมดอายุภายใน ${cfg.orangeMonths} เดือน`, ok: 'ปกติ (ระยะปลอดภัย)' }
+  const FS_TITLE = { all: 'ทะเบียนเวชภัณฑ์คงคลัง (ทุกสถานะ)', expired: EXP_LABEL.expired, red: `${EXP_LABEL.red} (≤ ${cfg.redMonths} เดือน)`, orange: `เฝ้าระวัง (≤ ${cfg.orangeMonths} เดือน)`, soon: `รายการใกล้หมดอายุภายใน ${cfg.orangeMonths} เดือน`, ok: 'ปกติ (ระยะปลอดภัย)', note: 'รายการที่มีหมายเหตุ' }
   const reportTitle = picked.size ? `รายการที่เลือก (${picked.size} รายการ)` : FS_TITLE[fs]
   const scope = kind === 'drug' ? 'เฉพาะยา' : kind === 'supply' ? 'เฉพาะเวชภัณฑ์' : 'ยาและเวชภัณฑ์'
   const printReport = () => window.print()
@@ -128,6 +145,7 @@ export default function App() {
   const empty = status === 'ok' && lots.length === 0
   const noKind = status === 'ok' && lots.length > 0 && allK.length === 0 // ยังไม่มีรายการของประเภทที่เลือก
   const T = (k) => status === 'ok' && !empty && !noKind && tab === k
+  const invTab = tab !== 'news' // แท็บที่ใช้ข้อมูลคลังยา (ข่าวสารไม่ต้องรอข้อมูลคลัง)
   const go = (t, o = {}) => { setTab(t); if (o.c) setClinic(o.c); if (o.f) setFs(o.f); if (o.u) setUf(o.u) }
 
   // สถิติรายคลินิก (ไม่ขึ้นกับตัวกรอง)
@@ -180,28 +198,31 @@ export default function App() {
     try { await api.saveSettings(draft); setCfg(draft); setSaved(true) } catch (e) { notify('บันทึกค่าตั้งเกณฑ์ไม่สำเร็จ: ' + e.message) }
   }
 
-  const titles = { dash: `สรุปภาพรวมคลังเวชภัณฑ์ คลินิก ${CLINICS.length} สาขา`, inv: 'ทะเบียนยาคงคลังแยกตาม Lot', use: 'วิเคราะห์อัตราการใช้ยา', alert: 'แจ้งเตือนเวชภัณฑ์' }
+  const titles = { dash: `สรุปภาพรวมคลังเวชภัณฑ์ คลินิก ${CLINICS.length} สาขา`, inv: 'ทะเบียนยาคงคลังแยกตาม Lot', use: 'วิเคราะห์อัตราการใช้ยา', alert: 'แจ้งเตือนเวชภัณฑ์', news: 'ข่าวสาร (ยาขาดคราว / ประกาศ)' }
   const d = { cfg, rows, all, rowMap, lotRows, by, cnt, qty, val, total, stat, sum, risk, busy, where, go, clinic, fs, setFs, uf, setUf, notes, setNotes: setNotesApi, setSel, del, invRows, picked, pickToggle, pickMany, clearPick, exportCsv, printReport, kind }
   return (
     <>
     <div className="flex min-h-screen print:hidden">
-      <Sidebar tab={tab} setTab={setTab} badge={cnt('expired') + cnt('red')} />
+      <Sidebar tab={tab} setTab={setTab} badge={cnt('expired') + cnt('red')} newsCount={newsCount} onLogout={onLogout} />
 
       <div className="flex-1 min-w-0 flex flex-col">
-        <TopBar clinic={clinic} setClinic={setClinic} q={q} setQ={setQ} onSettings={() => { setDraft(cfg); setSaved(false); setShowCfg(true) }} onAdd={() => { setForm((f) => ({ ...f, type: kind })); setAdding(true) }} />
+        <TopBar clinic={clinic} setClinic={setClinic} q={q} setQ={setQ} onSettings={() => { setDraft(cfg); setSaved(false); setShowCfg(true) }} onAdd={() => { setForm((f) => ({ ...f, type: kind })); setAdding(true) }} user={user} />
 
         <main className="px-6 pt-[22px] pb-9 flex-1 max-[1000px]:px-3 max-[1000px]:pt-4 max-[1000px]:pb-4">
           <div className="flex justify-between items-center flex-wrap gap-2.5 mb-[18px]">
-            <div><h2 className="text-[22px] font-semibold">{titles[tab]}</h2>{tab !== 'dash' && <small className="text-mut">{clinic === 'all' ? `ทุกคลินิก (${CLINICS.length} สาขา)` : clinic}</small>}</div>
-            <div className="inline-flex rounded-xl bg-[#e9edf1] p-[3px] print:hidden">
+            <div><h2 className="text-[22px] font-semibold">{titles[tab]}</h2>{tab !== 'dash' && <small className="text-mut">{clinic === 'all' ? `ทุกคลินิก (${CLINICS.length} สาขา)` : clinic}</small>}{invTab && status === 'ok' && (
+              <small className="block text-mut print:hidden">
+              </small>
+            )}</div>
+            {invTab && <div className="inline-flex rounded-xl bg-[#e9edf1] p-[3px] print:hidden">
               {[['drug', 'ยา'], ['supply', 'เวชภัณฑ์']].map(([k, l]) => (
                 <button key={k} onClick={() => setKind(k)} className={`px-4 py-1.5 rounded-[9px] text-[13.5px] cursor-pointer border-0 ${kind === k ? 'bg-white text-accent font-semibold shadow-card' : 'bg-transparent text-mut'}`}>{l}</button>
               ))}
-            </div>
+            </div>}
           </div>
 
-          {status === 'loading' && <div className="py-20 text-center text-mut">กำลังโหลดข้อมูลจากฐานข้อมูล...</div>}
-          {status === 'error' && (
+          {invTab && status === 'loading' && <div className="py-20 text-center text-mut">กำลังโหลดข้อมูลจากฐานข้อมูล...</div>}
+          {invTab && status === 'error' && (
             <div className={`${card} bg-white px-6 py-8`}>
               <h2 className="mb-1.5 text-[19px] font-bold text-[#a8322a]">เชื่อมต่อ backend ไม่ได้</h2>
               <p className="text-mut mb-3">{errMsg}</p>
@@ -214,7 +235,7 @@ export default function App() {
             </div>
           )}
 
-          {noKind && (
+          {invTab && noKind && (
             <div className={`${card} bg-white px-6 py-10 text-center`}>
               <h2 className="mb-1.5 text-[19px] font-bold">ยังไม่มี{kind === 'supply' ? 'เวชภัณฑ์' : 'ยา'}ในระบบ</h2>
               <p className="text-mut mb-4">{kind === 'supply' ? 'เวชภัณฑ์ต้องกรอกข้อมูลเอง กดปุ่มด้านล่างเพื่อเพิ่มรายการแรก' : 'กดปุ่มด้านล่างเพื่อเพิ่มรายการยา'}</p>
@@ -222,7 +243,7 @@ export default function App() {
             </div>
           )}
 
-          {empty && (
+          {invTab && empty && (
             <div className={`${card} bg-white px-6 py-10 text-center`}>
               <h2 className="mb-1.5 text-[19px] font-bold">ยังไม่มีรายการเวชภัณฑ์</h2>
               <p className="text-mut">กด “เพิ่มรายการเวชภัณฑ์” แล้วใส่รหัสยา ระบบจะดึงชื่อ หน่วย และราคามาให้ จากนั้นกรอก Lot จำนวน และวันหมดอายุ</p>
@@ -239,6 +260,9 @@ export default function App() {
           {T('use') && <UsagePage d={d} />}
 
           {T('alert') && <AlertsPage d={d} />}
+
+          {tab === 'news' && <NewsPage user={user} clinic={clinic} setClinic={setClinic} notify={notify} onCount={setNewsCount} />}
+
         </main>
         <footer className="flex justify-between flex-wrap gap-2 px-6 py-4 bg-white border-t border-line text-mut text-[13px] print:hidden"><span>© 2569 โรงพยาบาลกรุงเทพสิริโรจน์ (Bangkok Hospital Siriroj)</span><span>ฝ่ายเภสัชกรรม คลินิกเครือข่ายภูเก็ต</span></footer>
       </div>
@@ -254,4 +278,19 @@ export default function App() {
     <PrintReport rows={reportRows} title={reportTitle} clinic={clinic} scope={scope} notes={notes} />
     </>
   )
+}
+
+// ครอบด้วยการล็อกอิน: ยังไม่ล็อกอิน → หน้า Login / ล็อกอินแล้ว → แอปเดิม
+export default function App() {
+  const [user, setUser] = useState(null)
+  const [ready, setReady] = useState(false)
+  useEffect(() => {
+    auth.onExpire = () => setUser(null) // token หมดอายุ → กลับหน้า login
+    if (!auth.get()) { setReady(true); return }
+    api.me().then(setUser).catch(() => {}).finally(() => setReady(true))
+  }, [])
+  const logout = () => { auth.clear(); setUser(null) }
+  if (!ready) return <div className="py-20 text-center text-mut">กำลังตรวจสอบการเข้าสู่ระบบ...</div>
+  if (!user) return <LoginPage onLogin={setUser} />
+  return <Main user={user} onLogout={logout} />
 }

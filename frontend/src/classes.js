@@ -8,6 +8,10 @@ const btn = `${ctl} cursor-pointer focus-visible:outline-none focus-visible:bord
 export const btnGhost = `${btn} ${plain} hover:bg-head`
 export const btnPrimary = `${btn} bg-accent border-accent text-white font-medium enabled:hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed`
 export const noteInput = 'w-[140px] px-2.5 py-1.5 border border-transparent rounded-[10px] bg-white text-ink text-[13px] shadow-[0_0_0_1px_var(--color-line)] transition-[border-color,box-shadow] duration-150 focus:outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--color-accent-soft)]'
+// ช่องหมายเหตุที่มีข้อความ: พื้นเหลืองอ่อน + ตัวอักษรสีน้ำเงินหนา ให้เด่นบนแถวที่มีสีพื้นหลัง
+export const noteCls = (v) => (v && v.trim()
+  ? 'w-[140px] px-2.5 py-1.5 border border-transparent rounded-[10px] bg-[#fff4c2] text-[#1d4ed8] font-semibold text-[13px] shadow-[0_0_0_1px_#f1d36b] transition-[border-color,box-shadow] duration-150 focus:outline-none focus:border-accent'
+  : noteInput)
 
 /* ---------- การ์ด ---------- */
 export const card = 'bg-white rounded-[14px] shadow-card overflow-hidden'

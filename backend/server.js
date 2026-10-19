@@ -2,13 +2,16 @@ require('dotenv').config()
 const express = require('express')
 const cors = require('cors')
 const pool = require('./db')
+const { router: authRouter, requireAuth } = require('./auth')
 
 const app = express()
 app.use(cors())
 app.use(express.json())
 
-// TODO: ใส่ middleware ล็อกอิน (เช่น JWT ของ pharmatrack) ก่อนใช้งานจริง
-// app.use('/api', require('./middleware/auth'))
+// ล็อกอิน: /api/auth/login เปิดให้เรียกได้, /api/health เปิดไว้ตรวจระบบ, นอกนั้นต้องมี token ทั้งหมด
+app.use('/api/auth', authRouter)
+app.use('/api', (req, res, next) => (req.path === '/health' ? next() : requireAuth(req, res, next)))
+app.use('/api/news', require('./news'))
 
 const wrap = (fn) => (req, res) => fn(req, res).catch((e) => { console.error(e); res.status(500).json({ error: e.message }) })
 
@@ -35,7 +38,7 @@ app.get('/api/clinics', wrap(async (_req, res) => {
 
 // Lot ทั้งหมดพร้อมสถานะ Exp ที่คำนวณแล้ว
 app.get('/api/lots', wrap(async (_req, res) => {
-  res.json((await pool.query('SELECT * FROM v_lots ORDER BY expiry_date')).rows)
+  res.json(await require('./imedStock').overlay((await pool.query('SELECT * FROM v_lots ORDER BY expiry_date')).rows))
 }))
 
 // เพิ่ม Lot ใหม่ + บันทึก movement "receive"
