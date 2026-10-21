@@ -1,6 +1,5 @@
 // ตัวตรวจรหัสพนักงาน + รหัสผ่านกับ iMed
 // ตอนนี้เป็นโหมดจำลอง (mock) สำหรับทำหน้า UI: รหัสพนักงานอะไรก็ได้ + รหัสผ่านทดสอบตัวเดียวจาก .env (IMED_MOCK_PASSWORD)
-// เมื่อได้ข้อมูลเชื่อมต่อ iMed จริงจากฝ่าย IT ให้แก้เฉพาะฟังก์ชัน verifyReal ด้านล่าง — ส่วนอื่นของระบบไม่ต้องแก้
 const crypto = require('crypto')
 
 const provider = (process.env.IMED_PROVIDER || 'mock').toLowerCase()
