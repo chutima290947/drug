@@ -34,7 +34,7 @@ const legend = [
 export default function Sidebar({ tab, setTab, badge, newsCount = 0, onLogout }) {
   return (
     <aside className="w-[260px] flex-none bg-white border-r border-line px-3.5 py-[18px] flex flex-col sticky top-0 h-screen
-                      max-[1000px]:w-auto max-[1000px]:h-auto max-[1000px]:static max-[1000px]:flex-row max-[1000px]:overflow-x-auto max-[1000px]:px-2.5 max-[1000px]:py-2 max-[1000px]:items-center max-[1000px]:gap-1 print:hidden">
+                      max-[1000px]:w-full max-[1000px]:h-auto max-[1000px]:static max-[1000px]:border-r-0 max-[1000px]:border-b max-[1000px]:flex-row max-[1000px]:overflow-x-auto max-[1000px]:px-2.5 max-[1000px]:py-2 max-[1000px]:items-center max-[1000px]:gap-1 print:hidden">
       <img className="w-full max-w-[190px] mt-1 mx-1.5 mb-[26px] max-[1000px]:hidden" src="/logo.png" alt="Bangkok Hospital Siriroj" />
       <div className="text-[12.5px] font-semibold text-[#8d97b0] mt-0.5 mx-3.5 mb-2.5 max-[1000px]:hidden"></div>
       {nav.map(([k, label]) => (

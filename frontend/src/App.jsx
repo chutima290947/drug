@@ -202,7 +202,7 @@ function Main({ user, onLogout }) {
   const d = { cfg, rows, all, rowMap, lotRows, by, cnt, qty, val, total, stat, sum, risk, busy, where, go, clinic, fs, setFs, uf, setUf, notes, setNotes: setNotesApi, setSel, del, invRows, picked, pickToggle, pickMany, clearPick, exportCsv, printReport, kind }
   return (
     <>
-    <div className="flex min-h-screen print:hidden">
+    <div className="flex min-h-screen max-[1000px]:flex-col print:hidden">
       <Sidebar tab={tab} setTab={setTab} badge={cnt('expired') + cnt('red')} newsCount={newsCount} onLogout={onLogout} />
 
       <div className="flex-1 min-w-0 flex flex-col">
@@ -212,6 +212,9 @@ function Main({ user, onLogout }) {
           <div className="flex justify-between items-center flex-wrap gap-2.5 mb-[18px]">
             <div><h2 className="text-[22px] font-semibold">{titles[tab]}</h2>{tab !== 'dash' && <small className="text-mut">{clinic === 'all' ? `ทุกคลินิก (${CLINICS.length} สาขา)` : clinic}</small>}{invTab && status === 'ok' && (
               <small className="block text-mut print:hidden">
+                {stockSrc === 'imed' ? 'คงเหลือจาก iMed Stock (real-time)' : 'คงเหลือ: บันทึกในระบบนี้ (ยังไม่เชื่อมต่อ iMed Stock)'}
+                {updatedAt && ` · อัปเดตล่าสุด ${updatedAt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false })} น.`}
+                <button className="ml-2 cursor-pointer border-0 bg-transparent p-0 text-accent underline" onClick={() => loadAll(true).then((ok) => notify(ok ? 'อัปเดตข้อมูลแล้ว' : 'อัปเดตไม่สำเร็จ'))}>รีเฟรช</button>
               </small>
             )}</div>
             {invTab && <div className="inline-flex rounded-xl bg-[#e9edf1] p-[3px] print:hidden">
