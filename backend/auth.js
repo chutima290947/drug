@@ -2,7 +2,7 @@ const express = require('express')
 const jwt = require('jsonwebtoken')
 const pool = require('./db')
 const imed = require('./imed')
-const stock = require('./imedStock')
+const stock = require('./imedstock')
 
 const SECRET = process.env.JWT_SECRET
 if (!SECRET || SECRET.length < 16) {

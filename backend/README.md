@@ -7,8 +7,6 @@
 ## รัน API
 cp .env.example .env     # ใส่ DATABASE_URL ของ Neon
 npm install
-npm run dev              # http://localhost:4000/api/lots
+npm run dev              # API: http://localhost:4000/api/health
+# (ใน frontend) npm run dev  → หน้าเว็บ: http://localhost:5173/
 
-## ก่อนใช้งานจริง
-- ใส่ระบบล็อกอิน (JWT) ที่ server.js — ตอนนี้ API ยังเปิดโล่ง
-- อย่าอัปโหลดไฟล์ .env ขึ้น GitHub หรือที่สาธารณะ

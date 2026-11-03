@@ -7,7 +7,7 @@ const source = (process.env.IMED_STOCK || 'manual').toLowerCase()
 //   key   = `${clinic_code}|${drug_code}|${lot_no}`  (เช่น "BCA|D014|D014-L1")
 //   value = จำนวนคงเหลือ (ตัวเลข)
 async function fetchReal() {
-  throw new Error('ยังไม่ได้เชื่อมต่อ iMed Stock — แก้ฟังก์ชัน fetchReal ใน imedStock.js')
+  throw new Error('ยังไม่ได้เชื่อมต่อ iMed Stock — แก้ฟังก์ชัน fetchReal ใน imedstock.js')
 }
 
 // รับแถว Lot จากฐานข้อมูล (v_lots) แล้วแทนค่า qty ด้วยยอดจาก iMed (Lot ที่ iMed ไม่รู้จักจะคงยอดเดิมไว้)

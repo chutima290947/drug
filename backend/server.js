@@ -38,7 +38,7 @@ app.get('/api/clinics', wrap(async (_req, res) => {
 
 // Lot ทั้งหมดพร้อมสถานะ Exp ที่คำนวณแล้ว
 app.get('/api/lots', wrap(async (_req, res) => {
-  res.json(await require('./imedStock').overlay((await pool.query('SELECT * FROM v_lots ORDER BY expiry_date')).rows))
+  res.json(await require('./imedstock').overlay((await pool.query('SELECT * FROM v_lots ORDER BY expiry_date')).rows))
 }))
 
 // เพิ่ม Lot ใหม่ + บันทึก movement "receive"

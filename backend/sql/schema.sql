@@ -1,5 +1,7 @@
--- คลังยา OutList Clinic — PostgreSQL schema (ใช้ได้กับ Neon)
--- รันไฟล์นี้ก่อน แล้วตามด้วย seed_sample.sql (ถ้าต้องการข้อมูลตัวอย่าง)
+-- คลังยา OutList Clinic — PostgreSQL schema ฉบับรวม (ใช้ได้กับ Neon)
+-- รวมของเดิม (schema.sql) + ล็อกอิน (users) + ข่าวสาร (news, news_clinics)
+-- รันไฟล์นี้ไฟล์เดียวได้เลยบนฐานข้อมูลใหม่ และรันซ้ำบนฐานข้อมูลเดิมได้ปลอดภัย (ใช้ IF NOT EXISTS)
+-- ข้อมูลตัวอย่าง (ถ้าต้องการ): รัน seed_sample.sql ต่อท้าย
 
 CREATE TABLE IF NOT EXISTS clinics (
   code        text PRIMARY KEY,                 -- BCA, BKL, ...
@@ -116,3 +118,40 @@ INSERT INTO clinics (code, name, location_th) VALUES
   ('BRW','BRW Rawai Stock','ราไวย์ (Rawai)'),
   ('TLC','TLC SrisunthonClinic','ศรีสุนทร (Srisunthon)')
 ON CONFLICT (code) DO NOTHING;
+
+-- ============================================================
+-- ผู้ใช้งาน + ข่าวสาร
+-- ============================================================
+
+-- ผู้ใช้: ล็อกอินด้วยรหัสพนักงาน + รหัสผ่าน iMed (ระบบนี้ไม่เก็บรหัสผ่านจริง)
+-- พนักงานที่ iMed ยืนยันแล้วแต่ยังไม่มีแถวในตารางนี้ จะถูกเพิ่มอัตโนมัติตอนล็อกอินครั้งแรก
+CREATE TABLE IF NOT EXISTS users (
+  id            bigserial PRIMARY KEY,
+  username      text NOT NULL UNIQUE,                  -- รหัสพนักงาน iMed เก็บเป็นตัวพิมพ์เล็กเสมอ
+  display_name  text NOT NULL,                         -- ชื่อที่แสดงในข่าวสาร/มุมขวาบน
+  password_hash text NOT NULL DEFAULT '!imed',         -- ไม่ได้ใช้ (ตรวจรหัสผ่านกับ iMed) เก็บไว้เป็นค่าคงที่ '!imed'
+  role          text NOT NULL DEFAULT 'user' CHECK (role IN ('admin','user')),  -- admin แก้/ลบข่าวของคนอื่นได้
+  active        boolean NOT NULL DEFAULT true,         -- false = ปิดบัญชี เข้าใช้งานไม่ได้
+  created_at    timestamptz NOT NULL DEFAULT now()
+);
+
+-- ข่าวสาร (เช่น ยาขาดคราว) : free text 1 เรื่องต่อ 1 โพสต์ เลขข่าวหน้าเว็บนับจากลำดับเวลาโพสต์
+CREATE TABLE IF NOT EXISTS news (
+  id              bigserial PRIMARY KEY,
+  title           text NOT NULL,
+  body            text NOT NULL,
+  all_clinics     boolean NOT NULL DEFAULT false,      -- true = ส่งถึงทุกคลินิก (ไม่ใช้ news_clinics)
+  created_by      bigint REFERENCES users(id) ON DELETE SET NULL,
+  created_by_name text NOT NULL,                       -- เก็บชื่อไว้ด้วย เผื่อลบ/เปลี่ยนชื่อผู้ใช้ภายหลัง
+  created_at      timestamptz NOT NULL DEFAULT now(),
+  updated_by_name text NOT NULL,                       -- ระบบใส่เองจากผู้ล็อกอิน (ไม่รับจากหน้าเว็บ)
+  updated_at      timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_news_created ON news (created_at DESC);
+
+-- คลินิกปลายทางของแต่ละข่าว (ใช้เมื่อ all_clinics = false)
+CREATE TABLE IF NOT EXISTS news_clinics (
+  news_id     bigint NOT NULL REFERENCES news(id) ON DELETE CASCADE,
+  clinic_code text   NOT NULL REFERENCES clinics(code),
+  PRIMARY KEY (news_id, clinic_code)
+);
