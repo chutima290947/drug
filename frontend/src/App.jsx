@@ -214,7 +214,6 @@ function Main({ user, onLogout }) {
           <div className="flex justify-between items-center flex-wrap gap-2.5 mb-[18px]">
             <div><h2 className="text-[22px] font-semibold">{titles[tab]}</h2>{tab !== 'dash' && <small className="text-mut">{clinic === 'all' ? `ทุกคลินิก (${CLINICS.length} สาขา)` : clinic}</small>}{invTab && status === 'ok' && (
               <small className="block text-mut print:hidden">
-                {stockSrc === 'imed' ? 'คงเหลือจาก iMed Stock (real-time)' : 'คงเหลือ: บันทึกในระบบนี้ (ยังไม่เชื่อมต่อ iMed Stock)'}
                 {updatedAt && ` · อัปเดตล่าสุด ${updatedAt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false })} น.`}
                 <button className="ml-2 cursor-pointer border-0 bg-transparent p-0 text-accent underline" onClick={() => loadAll(true).then((ok) => notify(ok ? 'อัปเดตข้อมูลแล้ว' : 'อัปเดตไม่สำเร็จ'))}>รีเฟรช</button>
               </small>
