@@ -10,13 +10,14 @@ export const Flags = ({ r }) => (
   </>
 )
 
-const chipBase = 'cursor-pointer border rounded-full px-4 py-1.5 text-[13.5px] transition-[border-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:border-accent focus-visible:shadow-[0_0_0_3px_var(--color-accent-soft)]'
-export const Chips = ({ items, v, set }) => (
+export const chipBase = 'cursor-pointer border rounded-full px-4 py-1.5 text-[13.5px] transition-[border-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:border-accent focus-visible:shadow-[0_0_0_3px_var(--color-accent-soft)]'
+export const Chips = ({ items, v, set, extra }) => (
   <div className="flex gap-2 flex-wrap mb-3.5 print:hidden">
     {items.map(([k, l]) => (
       <button key={k} onClick={() => set(k)}
         className={`${chipBase} ${v === k ? 'bg-accent border-accent text-white' : 'bg-white border-line text-ink'}`}>{l}</button>
     ))}
+    {extra}
   </div>
 )
 

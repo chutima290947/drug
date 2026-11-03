@@ -45,7 +45,8 @@ export default function UsagePage({ d }) {
         </div>
       </div>
       <Chips v={uf} set={setUf} items={[['all', `ทั้งหมด (${useAll.length})`], ['exp', `เตือนหมดอายุ (${uc('exp')})`], ['nm', `ไม่เคลื่อนไหว (${uc('nm')})`], ['os', `Overstock (${uc('os')})`], ['note', `📝 มีหมายเหตุ (${uc('note')})`]]} />
-      <div className={`${card} overflow-auto`}>
+      <div className={card}>
+        <div className="hscroll overflow-auto max-h-[calc(100vh-200px)]">
         <table className="w-full border-separate border-spacing-0">
           <thead><tr><Th>ยา / รหัสยา</Th>{clinic === 'all' && <Th>คลินิก</Th>}<Th n>คงเหลือ</Th><Th n>เฉลี่ยอัตราการใช้ {top} วัน</Th><Th n>เฉลี่ย/วัน</Th><Th n>ใช้ได้อีก</Th><Th>Exp ใกล้สุด</Th><Th>สถานะการใช้</Th><Th>หมายเหตุ</Th></tr></thead>
           <tbody className="[&>tr:last-child>td]:border-b-0">
@@ -61,6 +62,7 @@ export default function UsagePage({ d }) {
             ))}
           </tbody>
         </table>
+        </div>
         <div className="px-5 py-3 border-t border-line text-[13px] text-mut">รวมรายการในมุมมองนี้: <b className="text-ink">{useRows.length} รายการ</b> · ปริมาณคงเหลือรวม <b className="text-ink">{fmt(useRows.reduce((a, r) => a + r.stock, 0))}</b> หน่วย</div>
       </div>
     </>

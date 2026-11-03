@@ -8,26 +8,19 @@ const wide = `${field} w-[150px]`
 const err = 'text-[#a8322a] text-[13px]'
 
 export default function AddItemModal({ form, F, setForm, lookup, checking, sugg = [], item, dup, formOk, addItem, onClose }) {
-  const supply = form.type === 'supply'
+  const supply = true // เพิ่มได้เฉพาะเวชภัณฑ์ (ยาใช้ทะเบียนยาในระบบ)
   const code = form.code.trim()
   const mismatch = lookup && lookup.type !== form.type
-  const seg = (on) => `px-5 py-1.5 rounded-[9px] text-[13.5px] cursor-pointer border-0 ${on ? 'bg-white text-accent font-semibold shadow-card' : 'bg-transparent text-mut'}`
   return (
     <div className="fixed inset-0 bg-[rgba(20,30,40,.35)] z-20 flex justify-end items-start overflow-auto" onClick={() => onClose()}>
       <div className="bg-white rounded-2xl shadow-card p-6 w-[min(440px,92vw)] mt-[6vh] mb-6 mx-auto grid gap-3.5" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-[19px] font-semibold">เพิ่มรายการเวชภัณฑ์</h2>
-        <div className={row}>ประเภท
-          <div className="inline-flex rounded-xl bg-[#e9edf1] p-[3px]">
-            <button className={seg(!supply)} onClick={() => setForm({ ...form, type: 'drug' })}>ยา</button>
-            <button className={seg(supply)} onClick={() => setForm({ ...form, type: 'supply' })}>เวชภัณฑ์</button>
-          </div>
-        </div>
         <label className={row}>รหัสเวชภัณฑ์
-          <input list="codes" className={`${wide} text-left`} placeholder={supply ? 'เช่น S001 (ตั้งเอง)' : 'เช่น D001'} value={form.code} onChange={F('code')} autoFocus />
+          <input list="codes" className={`${wide} text-left`} placeholder="เช่น S001 (ตั้งเอง)" value={form.code} onChange={F('code')} autoFocus />
         </label>
         <datalist id="codes">{sugg.map((d) => <option key={d.code} value={d.code}>{d.name}</option>)}</datalist>
         {code && (checking ? <div className="text-mut text-[13px]">กำลังค้นหา...</div>
-          : mismatch ? <div className={err}>รหัสนี้เป็น{lookup.type === 'drug' ? 'ยา' : 'เวชภัณฑ์'}อยู่แล้ว กรุณาเลือกประเภทให้ตรง</div>
+          : mismatch ? <div className={err}>รหัสนี้เป็นรายการยาอยู่แล้ว กรุณาใช้รหัสเวชภัณฑ์อื่น</div>
           : lookup && !supply ? <div className="bg-accent-soft rounded-[10px] px-3.5 py-2.5 flex flex-col text-sm"><b>{lookup.name}</b><span className="text-mut text-[13px]">หน่วย: {lookup.unit} · ราคา/หน่วย {baht(lookup.price)}</span></div>
           : supply ? <div className="text-mut text-[13px]">{lookup ? 'พบเวชภัณฑ์เดิมในระบบ — แก้ข้อมูลได้ด้านล่าง' : 'ไม่พบรหัสนี้ในระบบ — กรอกข้อมูลเวชภัณฑ์เองด้านล่าง'}</div>
           : <div className={err}>ไม่พบรหัสยานี้ในฐานข้อมูล</div>)}

@@ -31,3 +31,10 @@
 /* พิมพ์รายงาน: A4 แนวนอน */
 @page { size: A4 landscape; margin: 12mm; }
 @media print { body { background: #fff !important; } }
+
+/* ตารางที่เลื่อนซ้าย-ขวา/ขึ้น-ลงได้: แถบเลื่อนหนาและเห็นชัด (ใช้ class hscroll) */
+.hscroll { scrollbar-width: auto; scrollbar-color: #8c9bb5 #e9edf3; }
+.hscroll::-webkit-scrollbar { width: 14px; height: 14px; }
+.hscroll::-webkit-scrollbar-track { background: #e9edf3; }
+.hscroll::-webkit-scrollbar-thumb { background: #8c9bb5; border-radius: 8px; border: 3px solid #e9edf3; }
+.hscroll::-webkit-scrollbar-thumb:hover { background: #5f7090; }

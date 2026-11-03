@@ -16,7 +16,7 @@ import LoginPage from './pages/LoginPage.jsx'
 import PrintReport from './components/PrintReport.jsx'
 import { card, btnGhost, btnPrimary } from './classes.js'
 
-const EMPTY_FORM = { type: 'drug', code: '', name: '', unit: '', price: '', clinic: CLINICS[0], qty: '', lot: '', exp: '' }
+const EMPTY_FORM = { type: 'supply', code: '', name: '', unit: '', price: '', clinic: CLINICS[0], qty: '', lot: '', exp: '' }
 
 
 function Main({ user, onLogout }) {
@@ -44,7 +44,9 @@ function Main({ user, onLogout }) {
   const [uf, setUf] = useState('all')
   const [stockSrc, setStockSrc] = useState('manual') // แหล่งยอดคงเหลือ: manual = กรอกในระบบนี้ | imed = ดึงจาก iMed Stock
   const [updatedAt, setUpdatedAt] = useState(null)
-  const [newsCount, setNewsCount] = useState(0) // จำนวนข่าวทั้งหมด แสดงเป็นเลขที่เมนูข่าวสาร
+  const [news, setNews] = useState([]) // ข่าวสารทั้งหมด (ใช้แสดงเลขที่เมนู และดูข่าวในหน้าคลังยา/Lot)
+  const [editing, setEditing] = useState(null) // ข่าวที่กำลังแก้ไข (ส่งไปใส่ฟอร์มในหน้าข่าวสาร)
+  const reloadNews = () => api.news().then(setNews).catch(() => {})
 
   const notify = (m) => { setToast(m); setTimeout(() => setToast(''), 3500) }
   const lotsRef = useRef(lots); lotsRef.current = lots
@@ -84,7 +86,7 @@ function Main({ user, onLogout }) {
     const t = setInterval(() => { if (!document.hidden) loadAll(true) }, 60000)
     return () => clearInterval(t)
   }, [stockSrc, loadAll])
-  useEffect(() => { api.news().then((r) => setNewsCount(r.length)).catch(() => {}) }, [])
+  useEffect(() => { api.news().then(setNews).catch(() => {}) }, [])
 
   // ค้นรหัสจากฐานข้อมูลตอนพิมพ์ (ไม่ดึงทั้งหมด) — ยา: ดึงอัตโนมัติ / เวชภัณฑ์: ถ้าเคยกรอกไว้จะเติมให้
   useEffect(() => {
@@ -199,19 +201,20 @@ function Main({ user, onLogout }) {
   }
 
   const titles = { dash: `สรุปภาพรวมคลังเวชภัณฑ์ คลินิก ${CLINICS.length} สาขา`, inv: 'ทะเบียนยาคงคลังแยกตาม Lot', use: 'วิเคราะห์อัตราการใช้ยา', alert: 'แจ้งเตือนเวชภัณฑ์', news: 'ข่าวสาร (ยาขาดคราว / ประกาศ)' }
-  const d = { cfg, rows, all, rowMap, lotRows, by, cnt, qty, val, total, stat, sum, risk, busy, where, go, clinic, fs, setFs, uf, setUf, notes, setNotes: setNotesApi, setSel, del, invRows, picked, pickToggle, pickMany, clearPick, exportCsv, printReport, kind }
+  const d = { cfg, rows, all, rowMap, lotRows, by, cnt, qty, val, total, stat, sum, risk, busy, where, go, clinic, fs, setFs, uf, setUf, notes, setNotes: setNotesApi, setSel, del, invRows, picked, pickToggle, pickMany, clearPick, exportCsv, printReport, kind, news, user, setClinic, reloadNews, notify, setEditing }
   return (
     <>
     <div className="flex min-h-screen max-[1000px]:flex-col print:hidden">
-      <Sidebar tab={tab} setTab={setTab} badge={cnt('expired') + cnt('red')} newsCount={newsCount} onLogout={onLogout} />
+      <Sidebar tab={tab} setTab={setTab} badge={cnt('expired') + cnt('red')} newsCount={news.length} onLogout={onLogout} />
 
       <div className="flex-1 min-w-0 flex flex-col">
-        <TopBar clinic={clinic} setClinic={setClinic} q={q} setQ={setQ} onSettings={() => { setDraft(cfg); setSaved(false); setShowCfg(true) }} onAdd={() => { setForm((f) => ({ ...f, type: kind })); setAdding(true) }} user={user} />
+        <TopBar clinic={clinic} setClinic={setClinic} q={q} setQ={setQ} onSettings={() => { setDraft(cfg); setSaved(false); setShowCfg(true) }} onAdd={() => { setForm((f) => ({ ...f, type: 'supply' })); setAdding(true) }} user={user} />
 
         <main className="px-6 pt-[22px] pb-9 flex-1 max-[1000px]:px-3 max-[1000px]:pt-4 max-[1000px]:pb-4">
           <div className="flex justify-between items-center flex-wrap gap-2.5 mb-[18px]">
             <div><h2 className="text-[22px] font-semibold">{titles[tab]}</h2>{tab !== 'dash' && <small className="text-mut">{clinic === 'all' ? `ทุกคลินิก (${CLINICS.length} สาขา)` : clinic}</small>}{invTab && status === 'ok' && (
               <small className="block text-mut print:hidden">
+                {stockSrc === 'imed' ? 'คงเหลือจาก iMed Stock (real-time)' : 'คงเหลือ: บันทึกในระบบนี้ (ยังไม่เชื่อมต่อ iMed Stock)'}
                 {updatedAt && ` · อัปเดตล่าสุด ${updatedAt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false })} น.`}
                 <button className="ml-2 cursor-pointer border-0 bg-transparent p-0 text-accent underline" onClick={() => loadAll(true).then((ok) => notify(ok ? 'อัปเดตข้อมูลแล้ว' : 'อัปเดตไม่สำเร็จ'))}>รีเฟรช</button>
               </small>
@@ -240,8 +243,8 @@ function Main({ user, onLogout }) {
           {invTab && noKind && (
             <div className={`${card} bg-white px-6 py-10 text-center`}>
               <h2 className="mb-1.5 text-[19px] font-bold">ยังไม่มี{kind === 'supply' ? 'เวชภัณฑ์' : 'ยา'}ในระบบ</h2>
-              <p className="text-mut mb-4">{kind === 'supply' ? 'เวชภัณฑ์ต้องกรอกข้อมูลเอง กดปุ่มด้านล่างเพื่อเพิ่มรายการแรก' : 'กดปุ่มด้านล่างเพื่อเพิ่มรายการยา'}</p>
-              <button className={btnPrimary} onClick={() => { setForm((f) => ({ ...f, type: kind })); setAdding(true) }}>+ เพิ่มรายการเวชภัณฑ์</button>
+              <p className="text-mut mb-4">{kind === 'supply' ? 'เวชภัณฑ์ต้องกรอกข้อมูลเอง กดปุ่มด้านล่างเพื่อเพิ่มรายการแรก' : 'ระบบเพิ่มได้เฉพาะเวชภัณฑ์ ส่วนรายการยามาจากทะเบียนยาในระบบ'}</p>
+              {kind === 'supply' && <button className={btnPrimary} onClick={() => { setForm((f) => ({ ...f, type: 'supply' })); setAdding(true) }}>+ เพิ่มรายการเวชภัณฑ์</button>}
             </div>
           )}
 
@@ -263,7 +266,7 @@ function Main({ user, onLogout }) {
 
           {T('alert') && <AlertsPage d={d} />}
 
-          {tab === 'news' && <NewsPage user={user} clinic={clinic} setClinic={setClinic} notify={notify} onCount={setNewsCount} />}
+          {tab === 'news' && <NewsPage user={user} notify={notify} editing={editing} onSaved={() => { setEditing(null); reloadNews() }} onCancel={() => setEditing(null)} />}
 
         </main>
         <footer className="flex justify-between flex-wrap gap-2 px-6 py-4 bg-white border-t border-line text-mut text-[13px] print:hidden"><span>© 2569 โรงพยาบาลกรุงเทพสิริโรจน์ (Bangkok Hospital Siriroj)</span><span>ฝ่ายเภสัชกรรม คลินิกเครือข่ายภูเก็ต</span></footer>

@@ -16,7 +16,7 @@ const nav = [
   ['inv', 'คลังยา / Lot'],
   ['use', 'การใช้ยา'],
   ['alert', 'แจ้งเตือน'],
-  ['news', 'ข่าวสาร'],
+  ['news', 'โพสต์ข่าวสาร'],
 ]
 
 const navBase = 'group relative flex gap-3 items-center w-full border-0 px-3 py-[13px] rounded-xl text-sm font-medium text-left mb-1 cursor-pointer max-[1000px]:w-auto max-[1000px]:whitespace-nowrap max-[1000px]:m-0'
