@@ -1,7 +1,7 @@
 # 📋 คลังยา OutList Clinic — Database Schema & API Reference
 
 > **Web (Frontend)**: `http://localhost:5173/`
-> **Base URL (API)**: `http://localhost:4000/api` — เรียกผ่านหน้าเว็บได้ที่ `http://localhost:5173/api` 
+> **Base URL (API)**: `http://localhost:4000/api` — เรียกผ่านหน้าเว็บได้ที่ `http://localhost:5173/api` (Vite ส่งต่อให้อัตโนมัติ)
 > **Database**: PostgreSQL (Neon)
 > **Content-Type**: `application/json`
 > **Authentication**: Bearer Token (JWT)
@@ -10,13 +10,49 @@
 
 ---
 
+## 🔗 สิ่งที่ต้องการจาก iMed/HIS (Integration Requirements)
+
+ระบบต้องการดึงข้อมูลจาก iMed ใน **4 จุดหลัก** (ระบบนี้ **อ่านอย่างเดียว** ไม่เขียนกลับ iMed)
+
+> ⚠️ รูปแบบ request/response ด้านล่างเป็น **ข้อเสนอ** 
+> ชื่อ field ฝั่ง iMed ที่ยังไม่ทราบระบุเป็น `TBD`
+
+---
+
+### 📌 สรุป: ข้อมูลที่ดึงจาก iMed ในระบบนี้
+
+ระบบนี้ **อ่านข้อมูลจาก iMed อย่างเดียว ไม่เขียนอะไรกลับไป iMed**
+
+| # | ข้อมูลที่ดึงจาก iMed | ใช้ที่หน้าไหน | เรียกเมื่อไหร่ | สถานะในโค้ดตอนนี้ |
+|---|----------------------|----------------|----------------|--------------------|
+| 1 | **Login** — ตรวจรหัสพนักงาน + รหัสผ่าน และขอชื่อพนักงาน | หน้า Login, ชื่อผู้ใช้มุมขวาบน, ชื่อผู้โพสต์ข่าว | ทุกครั้งที่ล็อกอิน | โค้ดพร้อม รอฝ่าย IT ให้ข้อมูล (`verifyReal` ใน `imed.js`) ตอนนี้ใช้โหมดทดลอง |
+| 2 | **Stock** — ยอดคงเหลือแยก คลินิก / ยา / Lot (พร้อมชื่อ หน่วย ราคา วันหมดอายุ) | คลังยา, แดชบอร์ด, แจ้งเตือนใกล้หมดอายุ | ทุกครั้งที่โหลดข้อมูลคลังยา (real-time) | รอฝ่าย IT (`fetchReal` ใน `imedstock.js`) — โค้ดตอนนี้เอายอดจาก iMed มาทับเฉพาะ **จำนวนคงเหลือ** ของ Lot ที่มีในระบบนี้ |
+| 3 | **Dispense** — ประวัติการจ่ายยาออก | หน้าการใช้ยา (30/90/180 วัน), แจ้งเตือน (ยาพอใช้อีกกี่วัน) | ทุกครั้งที่โหลดหน้าการใช้ยา | ยังไม่ได้เชื่อม — ตอนนี้คำนวณจากตาราง `stock_movements` ในระบบนี้ |
+| 4 | **Item Master** — ชื่อ / หน่วย / ราคา จากรหัสเวชภัณฑ์ | หน้า "เพิ่มรายการเวชภัณฑ์" | ตอนกรอกรหัสเวชภัณฑ์ | ยังไม่มีในระบบเดิม (มีโค้ดตัวอย่าง `imeditem.js` แยกให้) |
+
+#### ข้อมูลที่ **ไม่ได้** มาจาก iMed (ระบบนี้เก็บเอง)
+
+| ข้อมูล | เก็บที่ตาราง | หมายเหตุ |
+|--------|--------------|----------|
+| ข่าวสาร และคลินิกปลายทาง | `news`, `news_clinics` | พนักงานโพสต์เองในระบบนี้ |
+| สิทธิ์ผู้ใช้ (`admin` / `user`) และการปิดบัญชี | `users` | iMed ยืนยันตัวตนเท่านั้น ไม่เก็บรหัสผ่านไว้ที่นี่ |
+| ค่าตั้งเกณฑ์ (เดือนแจ้งเตือน, วันที่ใช้คำนวณ ฯลฯ) | `app_settings` | ทุกเครื่องใช้ค่าเดียวกัน |
+| หมายเหตุของ Lot / ของยา | `lot_notes`, `drug_notes` | ผู้ใช้เขียนเอง |
+| รายชื่อคลินิก (6 คลินิก) | `clinics` | ตั้งต้นในระบบนี้ — **รหัสคลินิกต้องตรงกับ iMed** |
+
+#### สิ่งที่ขอให้ยืนยัน
+- วิธียืนยันตัวตนที่ใช้ได้: API, SSO หรือ LDAP (ระบบต้องการแค่ "ผ่าน/ไม่ผ่าน" และชื่อพนักงาน)
+- ชื่อ field จริงของ iMed ทุกจุดด้านล่าง (ช่อง `TBD`) และ endpoint จริง
+- รหัสคลินิกใน iMed ตรงกับ BCA, BKL, BKM, BPT, BRW, TLC หรือไม่
+- ข้อจำกัดการเรียก (จำนวนครั้ง/ความถี่) เพราะ Stock ถูกเรียกทุกครั้งที่ผู้ใช้โหลดหน้าคลังยา
+
+---
+
 ### 1. 🔐 Employee Authentication — Login ใช้รหัสเดียวกับ iMed
 
-เมื่อพนักงาน login → ระบบส่งรหัสพนักงานและรหัสผ่านไปตรวจกับ iMed 
+เมื่อพนักงาน login → ระบบส่งรหัสพนักงานและรหัสผ่านไปตรวจกับ iMed (ระบบนี้ **ไม่เก็บรหัสผ่านใด ๆ**)
 
-**ตอนนี้ (โหมดทดลอง)**:   
-### "username": "admin",
-### "password": "test1234"
+**ตอนนี้ (โหมดทดลอง)**: `IMED_PROVIDER=mock` — รหัสพนักงานอะไรก็ได้ + รหัสผ่านทดสอบตัวเดียวจาก `.env`
 
 **ระบบจะส่งไป:**
 ```json
@@ -424,101 +460,6 @@ ok ⚪ → orange 🟠 → red 🔴 → expired ⚫
 | Method | Endpoint | คำอธิบาย | Auth Required |
 |--------|----------|-----------|---------------|
 | GET | `/api/health` | ตรวจ API + ฐานข้อมูล → `{ "api": "ok", "database": "ok" }` | ❌ |
-
----
-
-## 📊 ER Diagram
-
-```mermaid
-erDiagram
-    clinics ||--o{ drug_lots : "clinic_code"
-    drugs ||--o{ drug_lots : "drug_code"
-    drug_lots ||--o{ stock_movements : "lot_id"
-    clinics ||--o{ stock_movements : "clinic_code"
-    drugs ||--o{ stock_movements : "drug_code"
-    drug_lots ||--o| lot_notes : "lot_id"
-    clinics ||--o{ drug_notes : "clinic_code"
-    drugs ||--o{ drug_notes : "drug_code"
-    users ||--o{ news : "created_by"
-    news ||--o{ news_clinics : "news_id"
-    clinics ||--o{ news_clinics : "clinic_code"
-
-    clinics {
-        text code PK
-        text name
-        text location_th
-        boolean active
-    }
-
-    drugs {
-        text code PK
-        text name
-        text unit
-        numeric unit_price
-        text item_type
-        boolean active
-    }
-
-    drug_lots {
-        bigint id PK
-        text clinic_code FK
-        text drug_code FK
-        text lot_no
-        int qty
-        date expiry_date
-    }
-
-    stock_movements {
-        bigint id PK
-        text clinic_code FK
-        text drug_code FK
-        bigint lot_id FK
-        text movement_type
-        int qty
-        timestamptz moved_at
-    }
-
-    lot_notes {
-        bigint lot_id PK
-        text note
-    }
-
-    drug_notes {
-        text clinic_code PK
-        text drug_code PK
-        text note
-    }
-
-    app_settings {
-        text key PK
-        jsonb value
-    }
-
-    users {
-        bigint id PK
-        text username
-        text display_name
-        text role
-        boolean active
-    }
-
-    news {
-        bigint id PK
-        text title
-        text body
-        boolean all_clinics
-        bigint created_by FK
-        text created_by_name
-        timestamptz created_at
-        text updated_by_name
-        timestamptz updated_at
-    }
-
-    news_clinics {
-        bigint news_id PK
-        text clinic_code PK
-    }
-```
 
 ---
 
